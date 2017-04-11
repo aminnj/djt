@@ -7,52 +7,58 @@ import sys
 
 import xgboost as xgb
 
+### Load files from images.py
 xdata = np.load("dump_xdata.npa")
 ydata = np.load("dump_ydata.npa")
 
+### Format ydata
 discs = ydata[:,1]
 xdata = xdata.reshape(xdata.shape[0], xdata.shape[1]**2)
 ydata[:,0][ydata[:,0] < 1.5] = 0
 ydata[:,0][ydata[:,0] > 1.5] = 1
 width = xdata.shape[1]
 
+### Add in the CSVv2 disc to the predictors? Good idea
 add_disc = True
 if add_disc:
     discs[discs < 0] = 0
     xdata = np.c_[discs.T, xdata]
 
+### Splits and stuff
 X_train, X_test, y_train_all, y_test_all = train_test_split(xdata, ydata, test_size=0.5, random_state=42)
 y_train = y_train_all[:,0]
 y_test = y_test_all[:,0]
 disc_test = y_test_all[:,1]
 pt_test = y_test_all[:,2]
 
+### Train. Currently using default parameters for xgboost
 dtrain = xgb.DMatrix( X_train, label=y_train)
 dtest = xgb.DMatrix( X_test, label=y_test)
 evallist  = [(dtest,'eval'), (dtrain,'train')]
-num_round = 10
+num_round = 30
 param = {'max_depth':3, 'eta':1, 'silent':1, 'objective':'binary:logistic' }
 param['nthread'] = 4
 param['eval_metric'] = 'auc'
-
 bst = xgb.train( param.items(), dtrain, num_round, evallist )
 y_pred = bst.predict(dtest)
 
+### Compute ROC/AUC for XGB(+CSVv2) and for CSVv2 by itself
 fpr, tpr, thresholds = metrics.roc_curve(y_test, y_pred)
 roc_auc = metrics.auc(fpr, tpr)
 fpr_disc, tpr_disc, thresholds_disc = metrics.roc_curve(y_test, disc_test)
 roc_auc_disc = metrics.auc(fpr_disc, tpr_disc)
 
+### Calculate 10% fake-rate WP for XGB
 csv_threshold = 0.8484
 first_idx = np.nonzero(fpr>0.1)[0][0]
 xgb_wp = thresholds[first_idx]
 xgb_wp_eff = tpr[first_idx]
-
 print """
 With XGB and 10% mistag rate, the discriminant threshold 
 is {0:.3f} and the b-tagging efficiency is {1:.3f}
 """.format(xgb_wp,xgb_wp_eff)
 
+### Make b-tag efficiency plots in ROOT because histograms are bad with Matplotlib
 import ROOT as r
 import Software.pyRootPlotMaker.pyRootPlotMaker as ppm
 os.system("mkdir -p plots")
@@ -74,6 +80,7 @@ map(lambda x: x.SetLineWidth(3), d_hists.values())
 ppm.plotComparison(d_hists["h_genb"],d_hists["h_genbtagged"],title="b-tag eff [CSVv2]",h1Title="gen b",h2Title="gen b + btagged",saveAs="plots/btageff_csv.pdf",xAxisTitle="p_{T}", ratioTitle="eff.", ratioRange=[0.2,1.0])
 ppm.plotComparison(d_hists["h_genb"],d_hists["h_genbtaggedxgb"],title="b-tag eff [XGB]",h1Title="gen b",h2Title="gen b + btagged",saveAs="plots/btageff_xgb.pdf",xAxisTitle="p_{T}", ratioTitle="eff.", ratioRange=[0.2,1.0])
 
+### Make ROC plots
 import matplotlib.pyplot as plt
 plt.figure()
 plt.plot(fpr, tpr, color='darkorange', lw=2, label='XGB (area = %0.2f)' % roc_auc)
