@@ -141,7 +141,7 @@ int ScanChain(TChain *ch, TString fname="hists.root"){
                 // better safe than sorry
                 if (is_udsg + is_c + is_b != 1) continue;
 
-                bool disc = pfjets_pfCombinedInclusiveSecondaryVertexV2BJetTag()[ijet];
+                float disc = pfjets_pfCombinedInclusiveSecondaryVertexV2BJetTag()[ijet];
                 bool passes_disc = disc > 0.8484;
 
                 int gentype = 0;

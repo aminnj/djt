@@ -6,8 +6,11 @@ import math
 # IMAGE_SIZE = 13
 # DISCRETIZATION = 0.1
 
-IMAGE_SIZE = 101
-DISCRETIZATION = 0.01
+JET_SIZE = 0.8
+DISCRETIZATION = 0.15
+
+IMAGE_SIZE = int(JET_SIZE/DISCRETIZATION) + 2
+print "IMAGE_SIZE:",IMAGE_SIZE
 
 class JetImage(object):
     def __init__(self, gentype, pt, eta, phi, et, disc):
@@ -29,7 +32,7 @@ class JetImage(object):
         self.pfcands.append(pfcand)
 
     def close_pfcands(self):
-        self.pfcands = np.array(self.pfcands)
+        self.pfcands = np.array(self.pfcands, dtype=np.float32)
 
     def get_pfcands(self):
         return self.pfcands
@@ -44,8 +47,6 @@ class JetImage(object):
         self.pfcands[:,1] //= DISCRETIZATION
 
         self.pfcands[:,2] -= self.phi
-        # self.pfcands[:,2][self.pfcands[:,2] >  3.14159] -= 2.*3.14159
-        # self.pfcands[:,2][self.pfcands[:,2] < -3.14159] += 2.*3.14159
         self.pfcands[:,2][self.pfcands[:,2] >  math.pi] -= 2.*math.pi
         self.pfcands[:,2][self.pfcands[:,2] < -math.pi] += 2.*math.pi
         self.pfcands[:,2] //= DISCRETIZATION
@@ -84,16 +85,22 @@ class JetImage(object):
         
 
 data_b = np.zeros((IMAGE_SIZE,IMAGE_SIZE))
+data_c = np.zeros((IMAGE_SIZE,IMAGE_SIZE))
 data_nonb = np.zeros((IMAGE_SIZE,IMAGE_SIZE))
 
 bs = []
 nonbs = []
 nimgs = 0
 
+xdata = []
+ydata = []
+
+
 fname = "forImages.txt"
 with open(fname, "r") as fhin:
     cnt = 0
-    for line in tqdm(fhin):
+    # for line in tqdm(list(fhin)[::10]):
+    for line in tqdm(list(fhin)):
         cnt += 1
         line = line.strip()
         if not line: continue
@@ -105,17 +112,23 @@ with open(fname, "r") as fhin:
         jet.process_pfcands()
 
         # data.append(jet)
-        if cnt > 300000: break
+        # if cnt > 100000: break
+        # if cnt > 300000: break
         # if cnt > 10: break
 
         img = jet.get_image()
         if jet.gentype == 2:
             data_b += img
             # bs.append(img)
+        elif jet.gentype == 1:
+            data_c += img
         else:
             data_nonb += img
+
+        xdata.append(img)
+        ydata.append([jet.gentype, jet.disc, jet.pt, jet.eta])
             # nonbs.append(img)
-        # print jet.get_npfcands()
+        # print np.array(jet.gentype, jet.get_pfcands()
         nimgs += 1
 
         # break
@@ -125,28 +138,30 @@ with open(fname, "r") as fhin:
         #     print jet.get_pfcands()
         #     break
 
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
+np.array(xdata, dtype=np.float32).dump("dump_xdata.npa")
+np.array(ydata, dtype=np.float32).dump("dump_ydata.npa")
 
-imgidx = 1
-for thing in bs:
-    print "B:", imgidx
-    plt.matshow(thing, fignum=imgidx, norm=LogNorm())
-    imgidx += 1
-for thing in nonbs:
-    print "NonB:", imgidx
-    plt.matshow(thing, fignum=imgidx, norm=LogNorm())
-    imgidx += 1
-
-plt.matshow(data_b/nimgs, fignum=1, norm=LogNorm(), cmap=plt.get_cmap("inferno"))
-plt.title("b")
-plt.colorbar()
-plt.matshow(data_nonb/nimgs, fignum=2, norm=LogNorm(), cmap=plt.get_cmap("inferno"))
-plt.title("non-b")
-plt.colorbar()
-
-
-plt.show()
+# import matplotlib.pyplot as plt
+# from matplotlib.colors import LogNorm
+# imgidx = 1
+# for thing in bs:
+#     print "B:", imgidx
+#     plt.matshow(thing, fignum=imgidx, norm=LogNorm())
+#     imgidx += 1
+# for thing in nonbs:
+#     print "NonB:", imgidx
+#     plt.matshow(thing, fignum=imgidx, norm=LogNorm())
+#     imgidx += 1
+# plt.matshow(data_b/nimgs, fignum=1, norm=LogNorm(), cmap=plt.get_cmap("inferno"))
+# plt.title("b")
+# plt.colorbar()
+# plt.matshow(data_nonb/nimgs, fignum=2, norm=LogNorm(), cmap=plt.get_cmap("inferno"))
+# plt.title("non-b")
+# plt.colorbar()
+# # plt.matshow(data_c/nimgs, fignum=3, norm=LogNorm(), cmap=plt.get_cmap("inferno"))
+# # plt.title("c")
+# # plt.colorbar()
+# plt.show()
 
 
 # import pickle
