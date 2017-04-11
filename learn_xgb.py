@@ -4,12 +4,19 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 import sys
+import os
 
 import xgboost as xgb
 
 ### Load files from images.py
 xdata = np.load("dump_xdata.npa")
 ydata = np.load("dump_ydata.npa")
+
+### Pt cut?
+min_pt = -1.
+tokeep = ydata[:,2]>min_pt
+ydata = ydata[tokeep]
+xdata = xdata[tokeep]
 
 ### Format ydata
 discs = ydata[:,1]
