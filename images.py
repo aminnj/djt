@@ -10,12 +10,13 @@ IMAGE_SIZE = 101
 DISCRETIZATION = 0.01
 
 class JetImage(object):
-    def __init__(self, gentype, pt, eta, phi, et):
+    def __init__(self, gentype, pt, eta, phi, et, disc):
         self.gentype = int(gentype)
         self.pt = float(pt)
         self.eta = float(eta)
         self.phi = float(phi)
         self.et = float(et)
+        self.disc = float(disc)
 
         self.pfcands = []
 
@@ -97,8 +98,8 @@ with open(fname, "r") as fhin:
         line = line.strip()
         if not line: continue
         parts = line.split()
-        jet = JetImage(*parts[:5])
-        for pfs in parts[5:]:
+        jet = JetImage(*parts[:6])
+        for pfs in parts[6:]:
             jet.add_pfcandstr(pfs)
         jet.close_pfcands()
         jet.process_pfcands()

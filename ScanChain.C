@@ -169,7 +169,7 @@ int ScanChain(TChain *ch, TString fname="hists.root"){
                 h_nef->Fill(pfjets_neutralEmE()[ijet]/jete);
 
                 if (do_printout) {
-                    std::cout << std::setprecision(2) << gentype << " " << pt << " " << eta << " " << phi << " " << jet.Et() << " " << disc << " " ; // << (int)(eta/discretization) << " " << (int)(phi/discretization) << " ";
+                    std::cout << std::setprecision(3) << gentype << " " << pt << " " << eta << " " << phi << " " << jet.Et() << " " << disc << " " ; // << (int)(eta/discretization) << " " << (int)(phi/discretization) << " ";
                 }
 
                 float pfe = 0.;
@@ -212,7 +212,7 @@ int ScanChain(TChain *ch, TString fname="hists.root"){
 
                     if (do_printout) {
                         // std::cout << pftype << "," << ieta << "," << iphi << "," << pfp4.Et() << " ";
-                        std::cout << std::setprecision(2) << pftype << "," << pfp4.Eta() << "," << pfp4.Phi() << "," << pfp4.Et() << " ";
+                        std::cout << std::setprecision(3) << pftype << "," << pfp4.Eta() << "," << pfp4.Phi() << "," << pfp4.Et() << " ";
                     }
 
 
