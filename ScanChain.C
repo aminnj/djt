@@ -8,7 +8,7 @@
 #include "TH2F.h"
 #include "TH1.h"
 #include "TChain.h"
-// #include "TLorentzVector.h"
+#include "TLorentzVector.h"
 #include "Math/VectorUtil.h"
 
 #include "CMS3.h"
@@ -75,8 +75,53 @@ int ScanChain(TChain *ch, TString fname="hists.root"){
     TH1F *h_dzbig_b = new TH1F("h_dzbig_b", "h_dzbig_b", 50, 0,50);
     TH1F *h_dzbig_nonb = new TH1F("h_dzbig_nonb", "h_dzbig_nonb", 50, 0,50);
 
-    bool do_printout = true;
-    float discretization = 0.2;
+
+    float pt = 0, eta = 0, phi = 0;
+    bool is_b = false;
+    bool is_c = false;
+    bool is_udsg = false;
+    int jetpflav = -1;
+    int jethflav = -1;
+    int jettype = -1;
+    float csvdisc = -1;
+    std::vector<float> pfcphi;
+    std::vector<float> pfceta;
+    std::vector<float> pfcet;
+    std::vector<int> pfctype;
+    std::vector<float> pfcdz;
+    std::vector<float> pfcdxy;
+    std::vector<float> pfcdzError;
+    std::vector<float> pfcdxyError;
+
+    // float pfcphi[MAXNPFCANDS];
+    // TTree
+    TLorentzVector* jetp4 = new TLorentzVector();
+    TLorentzVector* genp4 = new TLorentzVector();
+    TTree *t = new TTree("t", "Events");
+    t->Branch("jetpt", &pt, "jetpt/F");
+    t->Branch("jeteta", &eta, "jeteta/F");
+    t->Branch("jetphi", &phi, "jetphi/F");
+    t->Branch("jetp4", "TLorentzVector", &jetp4);
+    // t->Branch("genp4", "TLorentzVector", &genp4);
+    t->Branch("jethflav", &jethflav, "jethtflav/I");
+    t->Branch("jetpflav", &jetpflav, "jetptflav/I");
+    t->Branch("jettype", &jettype, "jettype/I");
+    t->Branch("jetcsvdisc", &csvdisc, "jetcsvdisc/F");
+
+    t->Branch("isb", &is_b, "is_b/b");
+    t->Branch("isc", &is_c, "is_c/b");
+    t->Branch("isudsg", &is_udsg, "is_udsg/b");
+
+    t->Branch("pfcphi", &pfcphi);
+    t->Branch("pfceta", &pfceta);
+    t->Branch("pfcet", &pfcet);
+    t->Branch("pfctype", &pfctype);
+    t->Branch("pfcdz", &pfcdz);
+    t->Branch("pfcdxy", &pfcdxy);
+    t->Branch("pfcdzError", &pfcdzError);
+    t->Branch("pfcdxyError", &pfcdxyError);
+
+    bool do_printout = false;
 
     int nEventsTotal = 0;
     int nEventsChain = ch->GetEntries();
@@ -98,56 +143,67 @@ int ScanChain(TChain *ch, TString fname="hists.root"){
             cms3.GetEntry(event);
             nEventsTotal++;
 
+            // if (event > 10000) break;
+
             CMS3::progress(nEventsTotal, nEventsChain);
 
             h_met->Fill(evt_pfmet());
 
             for(unsigned int ijet = 0; ijet < pfjets_p4().size(); ijet++) {
                 LorentzVector jet = pfjets_p4()[ijet]*pfjets_undoJEC()[ijet];
-                float pt = jet.Pt();
-                float eta = jet.Eta();
-                float phi = jet.Phi();
+                jetp4->SetPxPyPzE(jet.Px(), jet.Py(), jet.Pz(), jet.E());
+                pt = jet.Pt();
+                eta = jet.Eta();
+                phi = jet.Phi();
                 if(pt<20) continue;
 
 
-                bool is_b = false;
-                bool is_c = false;
-                bool is_udsg = false;
-                float mindr = 999.;
-                int absid = -1;
-                for(unsigned int igen = 0;igen < genps_id().size();igen++){
-                    LorentzVector mcp4 = genps_p4()[igen];
-                    float dr = ROOT::Math::VectorUtil::DeltaR(jet,mcp4);
-                    int aid = abs(genps_id()[igen]);
+                jettype = pfjets_type()[ijet];
+                if (jettype < 0) continue;
 
-                    // don't try to match with anything other than udsgcb
-                    if (!(aid <= 5 || aid == 21)) continue;
 
-                    if (dr >= mindr) continue;
-                    if (dr > 0.1) continue;
-                    mindr = dr;
-                    absid = aid;
+                // must have genjet with pt > 10 within dR of 0.15
+                if (!(pfjets_matched()[ijet])) continue;
 
-                }
+                is_b = jettype == 3 || jettype == 4;
+                is_c = jettype == 2;
+                is_udsg = jettype == 0 || jettype == 1;
 
-                h_mindr->Fill(mindr);
-                h_absid->Fill(absid);
+                // is_b = false;
+                // is_c = false;
+                // is_udsg = false;
+                // float mindr = 999.;
+                // int absid = -1;
+                // LorentzVector matchedp4;
+                // for(unsigned int igen = 0;igen < genps_id().size();igen++){
+                //     LorentzVector mcp4 = genps_p4()[igen];
+                //     float dr = ROOT::Math::VectorUtil::DeltaR(jet,mcp4);
+                //     int aid = abs(genps_id()[igen]);
+                //     // don't try to match with anything other than udsgcb
+                //     if (!(aid <= 5 || aid == 21)) continue;
+                //     if (dr >= mindr) continue;
+                //     if (dr > 0.1) continue;
+                //     mindr = dr;
+                //     absid = aid;
+                //     matchedp4 = mcp4;
+                // }
+                // genp4->SetPxPyPzE(matchedp4.Px(), matchedp4.Py(), matchedp4.Pz(), matchedp4.E());
+                // h_mindr->Fill(mindr);
+                // h_absid->Fill(absid);
+                // is_udsg = absid <= 3 || absid == 21;
+                // is_c = absid == 4;
+                // is_b = absid == 5;
+                // // if it's not matched to anything, or if matched too many things
+                // // better safe than sorry
+                // if (is_udsg + is_c + is_b != 1) continue;
 
-                is_udsg = absid <= 3 || absid == 21;
-                is_c = absid == 4;
-                is_b = absid == 5;
+                csvdisc = pfjets_pfCombinedInclusiveSecondaryVertexV2BJetTag()[ijet];
+                bool passes_disc = csvdisc > 0.8484;
 
-                // if it's not matched to anything, or if matched too many things
-                // better safe than sorry
-                if (is_udsg + is_c + is_b != 1) continue;
-
-                float disc = pfjets_pfCombinedInclusiveSecondaryVertexV2BJetTag()[ijet];
-                bool passes_disc = disc > 0.8484;
-
-                int gentype = 0;
-                if (is_udsg) gentype = 0;
-                if (is_c) gentype = 1;
-                if (is_b) gentype = 2;
+                // int gentype = 0;
+                // if (is_udsg) gentype = 0;
+                // if (is_c) gentype = 1;
+                // if (is_b) gentype = 2;
 
                 if (is_b) h_genb->Fill(pt);
                 if (passes_disc && is_b) h_genbtagged->Fill(pt);
@@ -168,8 +224,11 @@ int ScanChain(TChain *ch, TString fname="hists.root"){
                 h_cef->Fill(pfjets_chargedEmE()[ijet]/jete);
                 h_nef->Fill(pfjets_neutralEmE()[ijet]/jete);
 
+                jetpflav = pfjets_partonFlavour()[ijet];
+                jethflav = pfjets_hadronFlavour()[ijet];
+
                 if (do_printout) {
-                    std::cout << std::setprecision(3) << gentype << " " << pt << " " << eta << " " << phi << " " << jet.Et() << " " << disc << " " ; // << (int)(eta/discretization) << " " << (int)(phi/discretization) << " ";
+                    std::cout << std::setprecision(3) << jettype << " " << pt << " " << eta << " " << phi << " " << jet.Et() << " " << csvdisc << " " ; // << (int)(eta/discretization) << " " << (int)(phi/discretization) << " ";
                 }
 
                 float pfe = 0.;
@@ -177,6 +236,14 @@ int ScanChain(TChain *ch, TString fname="hists.root"){
                 int nbigdxy = 0;
                 int nbigdz = 0;
                 LorentzVector vpf = LorentzVector(0.,0.,0.,0.);
+                pfcphi.clear();
+                pfceta.clear();
+                pfcet.clear();
+                pfctype.clear();
+                pfcdz.clear();
+                pfcdxy.clear();
+                pfcdzError.clear();
+                pfcdxyError.clear();
                 for(unsigned int ipf = 0;ipf < pfjets_pfcandsp4()[ijet].size();ipf++){
                     LorentzVector pfp4 = pfjets_pfcandsp4()[ijet][ipf];
 
@@ -205,6 +272,16 @@ int ScanChain(TChain *ch, TString fname="hists.root"){
                         h_dxy_nonb->Fill( pfjets_pfcandsdxy()[ijet][ipf] );
                         h_dz_nonb->Fill( pfjets_pfcandsdz()[ijet][ipf] );
                     }
+
+
+                    pfcphi.push_back(pfp4.Phi());
+                    pfceta.push_back(pfp4.Eta());
+                    pfcet.push_back(pfp4.Et());
+                    pfctype.push_back(pftype);
+                    pfcdxy.push_back(pfjets_pfcandsdxy()[ijet][ipf]);
+                    pfcdxy.push_back(pfjets_pfcandsdxyError()[ijet][ipf]);
+                    pfcdzError.push_back(pfjets_pfcandsdz()[ijet][ipf]);
+                    pfcdzError.push_back(pfjets_pfcandsdzError()[ijet][ipf]);
 
 
                     // int ieta = pfp4.Eta() / discretization;
@@ -241,8 +318,9 @@ int ScanChain(TChain *ch, TString fname="hists.root"){
                 h_pfcandse_jete->Fill(pfe/jete);
 
 
+                t->Fill();
 
-            }
+            } // end jet loop
 
         }//event loop
 
